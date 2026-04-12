@@ -2,40 +2,35 @@ import tkinter as tk
 import random
 from clouds import *
 
-# Vraie ellipse
-mu_true  = np.array([random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5)])
-theta    = random.uniform(0, np.pi)
-a        = random.uniform(1.5, 3.5)
-b        = random.uniform(0.5, min(a - 0.3, 1.8))
-u1_true  = a * np.array([ np.cos(theta),  np.sin(theta)])
-u2_true  = b * np.array([-np.sin(theta),  np.cos(theta)])
-
-n1 = random.randint(150, 500)
-n2 = random.randint(150, 500)
-td2s = random.uniform(1.0, 3.5)
-
-cloud1 = generate_cloud_ellipse(n1, mu_true, u1_true, u2_true)
-
-# Ellipse calculée
-mu = mean_cloud(cloud1)
-C  = variance_cloud(cloud1, mu)
-valeurs, vecteurs = np.linalg.eig(C)
-
-v1 = vecteurs[:, 0]
-v2 = vecteurs[:, 1]
-
-u1 = np.sqrt(valeurs[0]) * v1
-u2 = np.sqrt(valeurs[1]) * v2
-
 CANVAS_W, CANVAS_H = 500, 500
 MARGIN     = 20
 POINT_R    = 2
 GRID_LINES = 5
 COLOR_BG   = "#0f0f0f"
 COLOR_GRID = "#2a2a2a"
+COLOR_AXIS = "#444444"
 COLOR_C1   = "#4fc3f7"
 COLOR_TRUE = "#e60000"
-COLOR_CALC = "white"
+COLOR_CALC = "#ffffff"
+
+def generate_data():
+    mu_true  = np.array([random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5)])
+    theta    = random.uniform(0, np.pi)
+    a        = random.uniform(1.5, 3.5)
+    b        = random.uniform(0.5, min(a - 0.3, 1.8))
+    u1_true  = a * np.array([ np.cos(theta),  np.sin(theta)])
+    u2_true  = b * np.array([-np.sin(theta),  np.cos(theta)])
+
+    n1 = random.randint(150, 500)
+    cloud = generate_cloud_ellipse(n1, mu_true, u1_true, u2_true)
+
+    mu = mean_cloud(cloud)
+    C  = variance_cloud(cloud, mu)
+    valeurs, vecteurs = np.linalg.eig(C)
+    u1 = np.sqrt(valeurs[0]) * vecteurs[:, 0]
+    u2 = np.sqrt(valeurs[1]) * vecteurs[:, 1]
+
+    return cloud, mu_true, u1_true, u2_true, mu, u1, u2
 
 def world_to_screen(px, py, scale, cx, cy):
     return cx + px * scale, cy - py * scale
@@ -67,6 +62,9 @@ def draw_canvas(canvas, points, color, ellipses=None):
             canvas.create_line(MARGIN, sy, w - MARGIN, sy, fill=COLOR_GRID)
         val += step
 
+    canvas.create_line(cx, MARGIN, cx, h - MARGIN, fill=COLOR_AXIS)
+    canvas.create_line(MARGIN, cy, w - MARGIN, cy, fill=COLOR_AXIS)
+
     for px, py in points:
         sx, sy = world_to_screen(px, py, scale, cx, cy)
         canvas.create_oval(sx - POINT_R, sy - POINT_R,
@@ -76,6 +74,13 @@ def draw_canvas(canvas, points, color, ellipses=None):
     if ellipses:
         for (e_mu, e_u1, e_u2, e_color) in ellipses:
             draw_ellipse(canvas, e_mu, e_u1, e_u2, e_color, scale, cx, cy)
+
+def reset():
+    cloud, mu_true, u1_true, u2_true, mu, u1, u2 = generate_data()
+    draw_canvas(c1, cloud, COLOR_C1, ellipses=[
+        (mu_true, u1_true, u2_true, COLOR_TRUE),
+        (mu,      u1,      u2,      COLOR_CALC),
+    ])
 
 root = tk.Tk()
 root.title("Nuages de points 2D")
@@ -88,9 +93,13 @@ frame.pack(padx=10, pady=10)
 c1 = tk.Canvas(frame, width=CANVAS_W, height=CANVAS_H, bg=COLOR_BG, highlightthickness=0)
 c1.grid(row=0, column=0, padx=(0, 8))
 
-draw_canvas(c1, cloud1, COLOR_C1, ellipses=[
-    (mu_true, u1_true, u2_true, COLOR_TRUE),
-    (mu,      u1,      u2,      COLOR_CALC),
-])
+btn_reset = tk.Button(
+    frame, text="Reset", command=reset,
+    bg="#1e1e1e", fg="#ffffff", activebackground="#333333", activeforeground="#ffffff",
+    relief="flat", padx=12, pady=6, cursor="hand2"
+)
+btn_reset.grid(row=1, column=0, pady=(8, 0))
+
+reset()
 
 root.mainloop()
