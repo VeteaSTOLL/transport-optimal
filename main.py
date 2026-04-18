@@ -17,14 +17,15 @@ COLOR_INTERP = "#00e676"
 
 state = {}
 
-def make_cloud():
+def make_cloud(n=None):
     mu    = np.array([random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5)])
     theta = random.uniform(0, np.pi)
     a     = random.uniform(1.5, 3.5)
     b     = random.uniform(0.5, min(a - 0.3, 1.8))
     u1    = a * np.array([ np.cos(theta),  np.sin(theta)])
     u2    = b * np.array([-np.sin(theta),  np.cos(theta)])
-    n     = random.randint(150, 400)
+    if n is None:
+        n = random.randint(150, 400)
     cloud = generate_cloud_ellipse(n, mu, u1, u2)
     mu_c  = np.array(mean_cloud(cloud))
     C     = variance_cloud(cloud, mu_c)
@@ -73,28 +74,27 @@ def redraw(t=0.0):
         sx, sy = world_to_screen(px, py, scale, cx, cy)
         canvas.create_oval(sx-POINT_R, sy-POINT_R, sx+POINT_R, sy+POINT_R, fill=COLOR_C2, outline="")
 
-    draw_ellipse(canvas, state['mu1'], state['u1_1'], state['u2_1'], COLOR_E1, scale, cx, cy)
-    draw_ellipse(canvas, state['mu2'], state['u1_2'], state['u2_2'], COLOR_E2, scale, cx, cy)
-
-    # ellipse interpolée via transport
-    Mt   = (1 - t) * np.eye(2) + t * state['T']
-    Ct   = Mt @ state['Cx'] @ Mt.T
-    mu_t = (1 - t) * state['mu1'] + t * state['mu2']
-    wt, Vt = np.linalg.eigh(Ct)
-    ut1  = np.sqrt(abs(wt[0])) * Vt[:, 0]
-    ut2  = np.sqrt(abs(wt[1])) * Vt[:, 1]
-    draw_ellipse(canvas, mu_t, ut1, ut2, COLOR_INTERP, scale, cx, cy)
+    # points verts interpolés via BSP matching
+    for src, dst in state['T_dict'].items():
+        pt = (1 - t) * np.array(src) + t * np.array(dst)
+        sx, sy = world_to_screen(pt[0], pt[1], scale, cx, cy)
+        canvas.create_oval(sx-POINT_R, sy-POINT_R, sx+POINT_R, sy+POINT_R, fill=COLOR_INTERP, outline="")
 
 def on_slider(val):
     redraw(float(val) / 100)
 
 def reset():
-    cloud1, mu1, u1_1, u2_1, Cx = make_cloud()
-    cloud2, mu2, u1_2, u2_2, Cy = make_cloud()
+    n = random.randint(150, 400)
+    cloud1, *_ = make_cloud(n)
+    cloud2, *_ = make_cloud(n)
+    c1 = list(cloud1)
+    c2 = list(cloud2)
+    T_dict = {}
+    BSP_matching(c1, c2, 0, n, T_dict)
     state.update(dict(
-        cloud1=cloud1, mu1=mu1, u1_1=u1_1, u2_1=u2_1, Cx=Cx,
-        cloud2=cloud2, mu2=mu2, u1_2=u1_2, u2_2=u2_2, Cy=Cy,
-        T=matrix_transport_gauss(Cx, Cy),
+        cloud1=cloud1,
+        cloud2=cloud2,
+        T_dict=T_dict,
     ))
     slider.set(0)
     redraw(0.0)

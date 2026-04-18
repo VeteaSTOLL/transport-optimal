@@ -82,7 +82,7 @@ def BSP_matching(X, Y, start, end, T):
         T[X[start]] = Y[start]
         return
 
-    v_dir = get_slice_direction()
+    v_dir = get_slice_direction(X[start:end], Y[start:end])
 
     sort_with_slice(X, v_dir, start, end)
     sort_with_slice(Y, v_dir, start, end)
