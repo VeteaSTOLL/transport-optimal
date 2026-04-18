@@ -52,3 +52,42 @@ def invsqrtm(M):
 
 def matrix_transport_gauss(Cx, Cy):
     return invsqrtm(Cx) @ sqrtm(sqrtm(Cx) @ Cy @ sqrtm(Cx)) @ invsqrtm(Cx)
+
+def get_slice_direction(X, Y):
+    muX = mean_cloud(X)
+    muY = mean_cloud(Y)
+    Cx = variance_cloud(X, muX)
+    Cy = variance_cloud(Y, muY)
+    A = matrix_transport_gauss(Cx, Cy)    
+    _, vectors  = np.linalg.eigh(A)
+    vector = vectors[:, random.randint(0,1)]
+    return vector
+
+def sort_with_slice(X, v_dir, start, end):
+    X[start:end] = sorted(X[start:end], key=lambda p : np.dot(p, v_dir))
+
+def BSP_matching(X, Y, start, end, T):
+    """
+    X : liste de points
+    Y : liste de points
+    len(X) == len(Y)
+    start : indice entre 0 et len(X)-1
+    end : indice entre 0 et len(X)-1
+    T : dictionnaire point -> point
+    """
+
+    assert len(X) == len(Y)
+
+    if (end - start == 1) : # pourquoi pas 0 ?
+        T[X[start]] = Y[start]
+        return
+
+    v_dir = get_slice_direction()
+
+    sort_with_slice(X, v_dir, start, end)
+    sort_with_slice(Y, v_dir, start, end)
+
+    pivot = (start + end) // 2
+
+    BSP_matching(X, Y, start, pivot, T)
+    BSP_matching(X, Y, pivot, end, T)
