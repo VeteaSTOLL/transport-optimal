@@ -25,14 +25,15 @@ N_RUNS = 10
 
 
 def compute_matching_cost():
-    if "T_dict" not in state or not state["T_dict"]:
+    if "T" not in state or not state["T"]:
         return None
+    X, Y, T = state["cloud1"], state["cloud2"], state["T"]
     total = 0.0
-    for src, dst in state["T_dict"].items():
-        dx = src[0] - dst[0]
-        dy = src[1] - dst[1]
+    for i, j in enumerate(T):
+        dx = X[i][0] - Y[j][0]
+        dy = X[i][1] - Y[j][1]
         total += (dx**2 + dy**2) ** 0.5
-    return total / len(state["T_dict"])
+    return total / len(T)
 
 
 def image_to_cloud(path, max_points=2000):
@@ -91,15 +92,11 @@ def reset(mode=None):
     cloud1 = cloud1[:n]
     cloud2 = cloud2[:n]
 
-    c1 = list(cloud1)
-    c2 = list(cloud2)
-
-    T_dict = {}
-    BSP_matching(c1, c2, 0, n, T_dict)
+    T = BSP_matching(cloud1, cloud2)
 
     state["cloud1"] = cloud1
     state["cloud2"] = cloud2
-    state["T_dict"] = T_dict
+    state["T"] = T
 
     slider.set(0)
     redraw(0.0)
@@ -151,7 +148,9 @@ def redraw(t=0.0):
             canvas.create_oval(sx-POINT_R, sy-POINT_R, sx+POINT_R, sy+POINT_R,
                                fill=COLOR_C2, outline="")
 
-    for src, dst in state['T_dict'].items():
+    X, Y = state['cloud1'], state['cloud2']
+    for i, j in enumerate(state['T']):
+        src, dst = X[i], Y[j]
         pt = (1 - t) * np.array(src) + t * np.array(dst)
         sx, sy = world_to_screen(pt[0], pt[1], scale, cx, cy)
         canvas.create_oval(sx-POINT_R, sy-POINT_R, sx+POINT_R, sy+POINT_R,
@@ -172,23 +171,19 @@ def on_compute_cost():
         cost_label.config(text="Pas de nuages chargés.")
         return
 
-    c1_base = list(state["cloud1"])
-    c2_base = list(state["cloud2"])
-    n = len(c1_base)
+    X = state["cloud1"]
+    Y = state["cloud2"]
 
     runs = []
     for _ in range(N_RUNS):
-        c1 = list(c1_base)
-        c2 = list(c2_base)
-        T_dict = {}
-        BSP_matching(c1, c2, 0, n, T_dict)
+        T = BSP_matching(X, Y)
 
         total = 0.0
-        for src, dst in T_dict.items():
-            dx = src[0] - dst[0]
-            dy = src[1] - dst[1]
+        for i, j in enumerate(T):
+            dx = X[i][0] - Y[j][0]
+            dy = X[i][1] - Y[j][1]
             total += (dx**2 + dy**2) ** 0.5
-        runs.append(total / len(T_dict))
+        runs.append(total / len(T))
 
     avg = sum(runs) / len(runs)
     cost_runs.append(avg)
