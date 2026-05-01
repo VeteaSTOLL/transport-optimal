@@ -97,13 +97,132 @@ def BSP_matching(X, Y):
         _BSP_matching_rec(X, Y, idxX, idxY, 0, n, T)
     return T
 
-def connected_components(X, Y, T1, T2):
-    adj = []
+def union(T1, T2):
+    """
+        renvoie la liste d'adjacence de l'union entre T1 et T2
+        0..n-1 : points dans X
+        n..2n-1 : points dans Y
+    """
+    assert len(T1) == len(T2)
+
+    n = len(T1)
+    adj = [[] for _ in range(2*n)]
+    for i in range(n):
+        if (T1[i] != T2[i]):
+            adj[i] = [n+T1[i], n+T2[i]]
+            adj[n+T1[i]] = [i]
+            adj[n+T2[i]] = [i]
+        else:
+            adj[i] = [n+T1[i]]
+            adj[n+T1[i]] = [i]
+    return adj
+
+def DFS(adj, v0, Vu, threshold):
+    ATraiter = [v0]
+    composante = []
+
+    while ATraiter:
+        s = ATraiter.pop()
+
+        if Vu[s]:
+            continue
+        Vu[s] = True
+
+        # on ajoute que les liaisons X -> Y et pas Y -> X 
+        if (s < threshold) :
+            composante.append(s)
+
+        for v in adj[s]:
+            if not Vu[v]:
+                ATraiter.append(v)
+
+    return composante
 
 
-    return []
+def composantes_connexes(adj):
+    n = len(adj)
+    threshold = n // 2
+    Vu = [False] * n
+    composantes = []
+
+    for i in range(n):
+        if not Vu[i]:
+            comp = DFS(adj, i, Vu, threshold)
+            composantes.append(comp)
+
+    return composantes
+
+def cost(X, Y, T, i):
+    p1, p2 = X[i], Y[T[i]]
+    return math.dist(p1, p2)
+
+def local_cost(X, Y, T, idx):
+    return sum(cost(X, Y, T, i) for i in idx)
+
+def total_cost(X, Y, T):
+    return local_cost(X, Y, T, range(len(T)))
+
+def assignment_swap(X, Y, T1, T2, i):
+    """
+        Optimise le cout de i
+        T1 : transport actuel
+        T2 : transport proposé
+    """
+    yi_old = T1[i]      # ancienne cible
+    yi_new = T2[i]      # nouvelle cible
+
+    # trouver j tel que T[j] == yi_new
+    j = None
+    for k in range(len(T1)):
+        if T1[k] == yi_new:
+            j = k
+            break
+
+    if (j is None):
+        return
+
+    # coûts avant
+    old_cost = cost(X, Y, T1, i) + cost(X, Y, T1, j)
+
+    # coûts après
+    new_cost = (
+        math.dist(X[i], Y[yi_new]) +
+        math.dist(X[j], Y[yi_old])
+    )
+
+    if new_cost < old_cost:
+        # swap
+        T1[i] = yi_new
+        T1[j] = yi_old
 
 def bijection_merging(X, Y, T1, T2):
-    CC = connected_components(X, Y, T1, T2)
+    adj = union(T1, T2)
+    CC = composantes_connexes(adj)
+    
+    T = T1.copy()
 
-    return
+    for C in CC:
+        cT1 = local_cost(X, Y, T1, C)
+        cT2 = local_cost(X, Y, T2, C)
+        if (cT2 < cT1):
+            for i in C:
+                T[i] = T2[i]
+                T2[i] = T1[i]
+    
+        for i in C:
+            assignment_swap(X, Y, T, T1, i)
+
+    return T
+
+def bijection_tournament(X, Y, level):
+    tournament_table = []
+
+    for i in range(2**level):
+        tournament_table.append(BSP_matching(X, Y))
+    
+    i = 0
+    while i+1 < len(tournament_table):
+        tournament_table.append(bijection_merging(X, Y, tournament_table[i], tournament_table[i+1]))
+        i += 2        
+
+    return tournament_table[-1]
