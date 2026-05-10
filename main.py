@@ -36,7 +36,7 @@ state = {
 
 
 
-def image_to_cloud_stipple(path, max_points=7000, iterations=5):
+def image_to_cloud_stipple(path, max_points=3000, iterations=5):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     if img is None:
         raise ValueError(f"Image introuvable : {path}")
@@ -44,8 +44,9 @@ def image_to_cloud_stipple(path, max_points=7000, iterations=5):
     img = cv2.resize(img, (300, 300))
     img = cv2.GaussianBlur(img, (3, 3), 0)
     h, w = img.shape
-
-    darkness = (255 - img.astype(np.float32)) / 255.0
+   
+    darkness = img.astype(np.float32) / 255.0 #zone claire
+    #darkness = (255 - img.astype(np.float32)) / 255.0 #zone sombre
     darkness = np.clip(darkness ** 1.5, 0.01, 1.0) 
 
     flat = darkness.flatten()
@@ -113,6 +114,7 @@ def image_to_cloud_stipple(path, max_points=7000, iterations=5):
         xi, yi = int(np.clip(px_img, 0, w-1)), int(np.clip(py_img, 0, h-1))
         local_d = darkness[yi, xi]
         radius = 0.5 + local_d * 3.0
+        
         # Normalise vers [-1, 1]
         px = (px_img - w / 2) / (w / 2)
         py = -(py_img - h / 2) / (h / 2)
