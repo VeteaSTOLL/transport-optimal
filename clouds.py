@@ -108,13 +108,17 @@ def union(T1, T2):
     n = len(T1)
     adj = [[] for _ in range(2*n)]
     for i in range(n):
-        if (T1[i] != T2[i]):
-            adj[i] = [n+T1[i], n+T2[i]]
-            adj[n+T1[i]] = [i]
-            adj[n+T2[i]] = [i]
-        else:
-            adj[i] = [n+T1[i]]
-            adj[n+T1[i]] = [i]
+
+        y1 = n + T1[i]
+        y2 = n + T2[i]
+
+        adj[i].append(y1)
+        adj[y1].append(i)
+
+        if y2 != y1:
+            adj[i].append(y2)
+            adj[y2].append(i)
+
     return adj
 
 def DFS(adj, v0, Vu, threshold):
